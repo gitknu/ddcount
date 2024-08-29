@@ -30,9 +30,9 @@
 <body>
     <div class="container">
         <h1>Калькулятор закупівель</h1>
-        <p>Виберіть дату дня закупівлі:</p>
+        <p>Виберіть дату першого дня:</p>
         <input type="date" id="dateInput">
-        <button onclick="calculateDates()">Знайти дати через 7, 11, 15 та 25 днів</button>
+        <button onclick="calculateDates()">Вирахувати</button>
         <div class="result" id="result"></div>
     </div>
 
@@ -74,27 +74,26 @@
             };
 
             const nextDate7 = calculateDate(7);
-            const nextDate11 = calculateDate(10);
+            const nextDate10 = calculateDate(10);
             const nextDate15 = calculateDate(15);
             const nextDate25 = calculateDate(25);
 
             // Prepare the result message
             let message = `Через 7 днів - ${formatDate(nextDate7)}`;
+            
+            // For 11th day
             let weekendMessage = '';
-            if (nextDate7.getDay() === 0 || nextDate7.getDay() === 6) {
-                weekendMessage += `\nЧерез 7 днів - ${formatDate(nextDate7)} <span class="highlight">Це вихідний (субота або неділя).</span>`;
+            if (nextDate10.getDay() === 0 || nextDate10.getDay() === 6) {
+                weekendMessage = `\nЧерез 10 днів - ${formatDate(nextDate10)} <span class="highlight">Це вихідний (субота або неділя).</span>`;
+            } else {
+                weekendMessage = `\nЧерез 10 днів - ${formatDate(nextDate10)}`;
             }
 
-            message += `\nЧерез 11 днів - ${formatDate(nextDate11)}`;
-            if (nextDate11.getDay() === 0 || nextDate11.getDay() === 6) {
-                weekendMessage += `\nЧерез 11 днів - ${formatDate(nextDate11)} <span class="highlight">Це вихідний (субота або неділя).</span>`;
-            }
-
+            message += weekendMessage;
             message += `\nЧерез 15 днів - ${formatDate(nextDate15)}`;
             message += `\nЧерез 25 днів - ${formatDate(nextDate25)}`;
 
-            // Append weekend messages at the end
-            resultDiv.innerHTML = message + weekendMessage;
+            resultDiv.innerHTML = message;
         }
     </script>
 </body>
