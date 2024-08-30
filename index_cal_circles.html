@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор закупівель</title>
+    <style>
+        body {
+            margin: 20px;
+        }
+        .container {
+            margin: 0 auto;
+            text-align: center;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .result {
+            margin-top: 20px;
+            white-space: pre-wrap; 
+        }
+        .highlight {
+            color: red;
+        }
+        .calendar {
+            margin-top: 20px;
+            text-align: left;
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 1000px; /* Set maximum width */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .calendar table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .calendar th, .calendar td {
+            border: 1px solid grey;
+            padding: 8px;
+            text-align: center;
+        }
+        .calendar th {
+            background-color: #f4f4f4;
+        }
+        .calendar .weekend {
+            background-color: #f9d6d5;
+        }
+        .calendar .chosen-day {
+            background-color: #ff4c4c; 
+            color: white; 
+            font-weight: bold;
+        }
+        .calendar .special-day {
+            background-color: #ff9f9f; 
+            color: black; 
+            font-weight: bold;
+        }
+        .calendar .month-year {
+            font-weight: bold;
+            text-align: center;
+            background-color: #e4e4e4;
+            text-transform: uppercase; 
+        }
+        .combined-calendar {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            gap: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .circle {
+            border: 2px solid blue; 
+            border-radius: 50%; 
+            padding: 5px; 
+            display: inline-block; 
+            width: 30px; 
+            height: 30px; 
+            line-height: 30px; 
+            text-align: center; 
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Калькулятор закупівель</h1>
+        <p>Виберіть дату першого дня:</p>
+        <input type="date" id="dateInput">
+        <button onclick="calculateDates()">Вирахувати</button>
+        <button id="saveButton" class="hidden" onclick="saveBothCalendarsAsPNG()">Зберегти обидва календарі як PNG</button>
+        <div class="result" id="result"></div>
+        <div class="combined-calendar" id="combinedCalendar">
+            <div class="calendar" id="calendar"></div>
+            <div class="calendar" id="nextMonthCalendar"></div>
+        </div>
+    </div>
+    <script>
+        function calculateDates() {
+            const dateInput = document.getElementById('dateInput').value;
+            const resultDiv = document.getElementById('result');
+            const calendarDiv = document.getElementById('calendar');
+            const nextMonthCalendarDiv = document.getElementById('nextMonthCalendar');
+            const saveButton = document.getElementById('saveButton');
+            if (!dateInput) {
+                resultDiv.innerText = 'Будь ласка, виберіть дату.';
+                saveButton.classList.add('hidden'); 
+                return;
+            }
+            const inputDate = new Date(dateInput);
+            const daysOfWeek = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П’ятниця", "Субота"];
+            const dayOfWeekInput = inputDate.getDay();
+            if (dayOfWeekInput === 0 || dayOfWeekInput === 6) { 
+                alert('Не можна обрати перший день вихідним!');
+                resultDiv.innerText = '';
+                calendarDiv.innerHTML = '';
+                nextMonthCalendarDiv.innerHTML = '';
+                saveButton.classList.add('hidden'); 
+                return;
+            }
+            const calculateDate = (days) => {
+                const date = new Date(inputDate);
+                date.setDate(inputDate.getDate() + days);
+                return date;
+            };
+            const formatDate = (date) => {
+                const dayOfWeek = daysOfWeek[date.getDay()];
+                const day = date.getDate();
+                const month = date.toLocaleString('uk-UA', { month: 'long' });
+                return `${dayOfWeek} (${day} ${month})`;
+            };
+            const nextDate7 = calculateDate(7);
+            const nextDate10 = calculateDate(10);
+            const nextDate15 = calculateDate(15);
+            const nextDate25 = calculateDate(25);
+            let message = `Через 7 днів - ${formatDate(nextDate7)}`;
+            if (nextDate10.getDay() === 0 || nextDate10.getDay() === 6) {
+                alert('Один із обраних днів (а саме - 10-й) припадає на вихідний. Календар не може бути згенеровано');
+                resultDiv.innerText = '';
+                calendarDiv.innerHTML = '';
+                nextMonthCalendarDiv.innerHTML = '';
+                saveButton.classList.add('hidden'); 
+                return;
+            }
+            message += `\nЧерез 10 днів - ${formatDate(nextDate10)}`;
+            message += `\nЧерез 15 днів - ${formatDate(nextDate15)}`;
+            message += `\nЧерез 25 днів - ${formatDate(nextDate25)}`;
+            resultDiv.innerHTML = message;
+            displayCalendar(inputDate, calendarDiv, [nextDate25], nextDate7, nextDate10, nextDate15);
+            const nextMonth = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 1);
+            const nextMonthDates = [nextDate7, nextDate10, nextDate15, nextDate25];
+            const needsNextMonth = nextMonthDates.some(date => date.getMonth() === nextMonth.getMonth());
+            if (needsNextMonth) {
+                displayCalendar(nextMonth, nextMonthCalendarDiv, [nextDate25], nextDate7, nextDate10, nextDate15, false); 
+            } else {
+                nextMonthCalendarDiv.innerHTML = '';
+            }
+            saveButton.classList.remove('hidden');
+        }
+        function displayCalendar(date, calendarDiv, specialDates = [], highlightDate7 = null, highlightDate10 = null, highlightDate15 = null, highlightChosenDay = true) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const monthName = firstDay.toLocaleString('uk-UA', { month: 'long' }).toUpperCase();
+            const monthYearHeader = `<tr><td colspan="7" class="month-year">${monthName} ${year}</td></tr>`;
+            const daysOfWeek = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
+            let calendarHTML = '<table>' + monthYearHeader + '<tr>';
+            daysOfWeek.forEach(day => {
+                calendarHTML += `<th>${day}</th>`;
+            });
+            calendarHTML += '</tr><tr>';
+            const offset = (firstDay.getDay() + 6) % 7;
+            for (let i = 0; i < offset; i++) {
+                calendarHTML += '<td></td>';
+            }
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const currentDay = new Date(year, month, day);
+                const isWeekend = currentDay.getDay() === 0 || currentDay.getDay() === 6;
+                const isChosenDay = highlightChosenDay && currentDay.toDateString() === date.toDateString();
+                const isSpecialDay = specialDates.some(specialDate => specialDate.toDateString() === currentDay.toDateString());
+                const isNextDate7 = highlightDate7 && currentDay.toDateString() === highlightDate7.toDateString();
+                const isNextDate10 = highlightDate10 && currentDay.toDateString() === highlightDate10.toDateString();
+                const isNextDate15 = highlightDate15 && currentDay.toDateString() === highlightDate15.toDateString();
+                calendarHTML += `<td class="${isWeekend ? 'weekend' : ''} ${isChosenDay ? 'chosen-day' : ''} ${isSpecialDay ? 'special-day' : ''} ${isNextDate7 || isNextDate10 || isNextDate15 ? 'circle' : ''}">${day}</td>`;
+                if ((offset + day) % 7 === 0 && day !== lastDay.getDate()) {
+                    calendarHTML += '</tr><tr>';
+                }
+            }
+            const remainingDays = 7 - ((offset + lastDay.getDate()) % 7);
+            for (let i = 0; i < remainingDays && remainingDays < 7; i++) {
+                calendarHTML += '<td></td>';
+            }
+            calendarHTML += '</tr></table>';
+            calendarDiv.innerHTML = calendarHTML;
+        }
+        function saveBothCalendarsAsPNG() {
+            const combinedCalendarDiv = document.getElementById('combinedCalendar');
+            html2canvas(combinedCalendarDiv).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png'); 
+                link.download = 'calendars.png'; 
+                link.click(); 
+            });
+        }
+    </script>
+</body>
+</html>
