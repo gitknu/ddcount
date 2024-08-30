@@ -28,7 +28,7 @@
             text-align: left;
             border-collapse: collapse;
             width: 100%;
-            max-width: 1000px; /* Set maximum width */
+            max-width: 1000px; 
             margin-left: auto;
             margin-right: auto;
         }
@@ -40,6 +40,7 @@
             border: 1px solid grey;
             padding: 8px;
             text-align: center;
+            position: relative; /* Ensure positioning context for circles */
         }
         .calendar th {
             background-color: #f4f4f4;
@@ -61,9 +62,35 @@
             font-weight: bold;
             text-align: center;
             background-color: #e4e4e4;
-            text-transform: uppercase; /* Transform text to uppercase */
+            text-transform: uppercase; 
+        }
+        .combined-calendar {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            gap: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .circle {
+            border: 2px solid black; 
+            border-radius: 50%; 
+            padding: 5px; 
+            display: inline-block; 
+            width: 30px; 
+            height: 30px; 
+            line-height: 30px; 
+            text-align: center; 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background-color: white; 
+            z-index: 1; 
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -71,140 +98,126 @@
         <p>Виберіть дату першого дня:</p>
         <input type="date" id="dateInput">
         <button onclick="calculateDates()">Вирахувати</button>
+        <button id="saveButton" class="hidden" onclick="saveBothCalendarsAsPNG()">Зберегти</button>
         <div class="result" id="result"></div>
-        <div class="calendar" id="calendar"></div>
-        <div class="calendar" id="nextMonthCalendar"></div>
+        <div class="combined-calendar" id="combinedCalendar">
+            <div class="calendar" id="calendar"></div>
+            <div class="calendar" id="nextMonthCalendar"></div>
+        </div>
     </div>
-
     <script>
-        function calculateDates() {
-            const dateInput = document.getElementById('dateInput').value;
-            const resultDiv = document.getElementById('result');
-            const calendarDiv = document.getElementById('calendar');
-            const nextMonthCalendarDiv = document.getElementById('nextMonthCalendar');
-
-            if (!dateInput) {
-                resultDiv.innerText = 'Будь ласка, виберіть дату.';
-                return;
-            }
-
-            // Parse the input date
-            const inputDate = new Date(dateInput);
-
-            // Check if the selected date is a weekend
-            const daysOfWeek = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П’ятниця", "Субота"];
-            const dayOfWeekInput = inputDate.getDay();
-
-            if (dayOfWeekInput === 0 || dayOfWeekInput === 6) { // 0 = Sunday, 6 = Saturday
-                alert('Не можна обрати перший день вихідним!');
-                resultDiv.innerText = '';
-                calendarDiv.innerHTML = '';
-                nextMonthCalendarDiv.innerHTML = '';
-                return;
-            }
-
-            // Calculate the dates
-            const calculateDate = (days) => {
-                const date = new Date(inputDate);
-                date.setDate(inputDate.getDate() + days);
-                return date;
-            };
-
-            const formatDate = (date) => {
-                const dayOfWeek = daysOfWeek[date.getDay()];
-                const day = date.getDate();
-                const month = date.toLocaleString('uk-UA', { month: 'long' });
-                return `${dayOfWeek} (${day} ${month})`;
-            };
-
-            const nextDate7 = calculateDate(7);
-            const nextDate10 = calculateDate(10);
-            const nextDate15 = calculateDate(15);
-            const nextDate25 = calculateDate(25);
-
-            // Prepare the result message
-            let message = `Через 7 днів - ${formatDate(nextDate7)}`;
-            
-            // Check if the 10th day is a weekend
-            if (nextDate10.getDay() === 0 || nextDate10.getDay() === 6) {
-                alert('Один із обраних днів (а саме - 10-й) припадає на вихідний. Календар не може бути згенеровано');
-                resultDiv.innerText = '';
-                calendarDiv.innerHTML = '';
-                nextMonthCalendarDiv.innerHTML = '';
-                return;
-            }
-
-            // For 10th day
-            message += `\nЧерез 10 днів - ${formatDate(nextDate10)}`;
-            message += `\nЧерез 15 днів - ${formatDate(nextDate15)}`;
-            message += `\nЧерез 25 днів - ${formatDate(nextDate25)}`;
-
-            resultDiv.innerHTML = message;
-
-            // Display calendar for the month of the chosen date
-            displayCalendar(inputDate, calendarDiv, [nextDate25]);
-
-            // Display next month's calendar if necessary
-            const nextMonth = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 1);
-            const nextMonthDates = [nextDate7, nextDate10, nextDate15, nextDate25];
-            const needsNextMonth = nextMonthDates.some(date => date.getMonth() === nextMonth.getMonth());
-
-            if (needsNextMonth) {
-                displayCalendar(nextMonth, nextMonthCalendarDiv, [nextDate25], false); // False to avoid highlighting
-            } else {
-                nextMonthCalendarDiv.innerHTML = '';
-            }
-        }
-
-        function displayCalendar(date, calendarDiv, specialDates = [], highlightChosenDay = true) {
+function calculateDates() {
+    const dateInput = document.getElementById('dateInput').value;
+    const resultDiv = document.getElementById('result');
+    const calendarDiv = document.getElementById('calendar');
+    const nextMonthCalendarDiv = document.getElementById('nextMonthCalendar');
+    const saveButton = document.getElementById('saveButton');
+    if (!dateInput) {
+        resultDiv.innerText = 'Будь ласка, виберіть дату.';
+        saveButton.classList.add('hidden'); 
+        return;
+    }
+    const inputDate = new Date(dateInput);
+    const daysOfWeek = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П’ятниця", "Субота"];
+    const dayOfWeekInput = inputDate.getDay();
+    if (dayOfWeekInput === 0 || dayOfWeekInput === 6) { 
+        alert('Не можна обрати перший день вихідним!');
+        resultDiv.innerText = '';
+        calendarDiv.innerHTML = '';
+        nextMonthCalendarDiv.innerHTML = '';
+        saveButton.classList.add('hidden'); 
+        return;
+    }
+    const calculateDate = (days) => {
+        const date = new Date(inputDate);
+        date.setDate(inputDate.getDate() + days);
+        return date;
+    };
+    const formatDate = (date) => {
+        const dayOfWeek = daysOfWeek[date.getDay()];
+        const day = date.getDate();
+        const month = date.toLocaleString('uk-UA', { month: 'long' });
+        return `${dayOfWeek} (${day}, ${month})`;
+    };
+    const nextDate7 = calculateDate(7);
+    const nextDate10 = calculateDate(10);
+    const nextDate15 = calculateDate(15);
+    const nextDate25 = calculateDate(25);
+    let message = `7 днів - ${formatDate(nextDate7)}`;
+    if (nextDate10.getDay() === 0 || nextDate10.getDay() === 6) {
+        alert('Один із обраних днів (а саме - 10-й) припадає на вихідний. Календар не може бути згенеровано');
+        resultDiv.innerText = '';
+        calendarDiv.innerHTML = '';
+        nextMonthCalendarDiv.innerHTML = '';
+        saveButton.classList.add('hidden'); 
+        return;
+    }
+    message += `\n\n10 днів - ${formatDate(nextDate10)}`;
+    message += `\n\n15 днів - ${formatDate(nextDate15)}`;
+    message += `\n\n25 днів - ${formatDate(nextDate25)}`;
+    resultDiv.innerHTML = message;
+    displayCalendar(inputDate, calendarDiv, [nextDate25], nextDate7, nextDate10, nextDate15);
+    const nextMonth = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 1);
+    const nextMonthDates = [nextDate7, nextDate10, nextDate15, nextDate25];
+    const needsNextMonth = nextMonthDates.some(date => date.getMonth() === nextMonth.getMonth());
+    if (needsNextMonth) {
+        displayCalendar(nextMonth, nextMonthCalendarDiv, [nextDate25], nextDate7, nextDate10, nextDate15, false); 
+    } else {
+        nextMonthCalendarDiv.innerHTML = '';
+    }
+    saveButton.classList.remove('hidden');
+}
+        function displayCalendar(date, calendarDiv, specialDates = [], highlightDate7 = null, highlightDate10 = null, highlightDate15 = null, highlightChosenDay = true) {
             const year = date.getFullYear();
             const month = date.getMonth();
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
-            
-            // Get the month and year for the header
             const monthName = firstDay.toLocaleString('uk-UA', { month: 'long' }).toUpperCase();
             const monthYearHeader = `<tr><td colspan="7" class="month-year">${monthName} ${year}</td></tr>`;
-
-            // Create calendar header with Monday as the first day
             const daysOfWeek = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
             let calendarHTML = '<table>' + monthYearHeader + '<tr>';
             daysOfWeek.forEach(day => {
                 calendarHTML += `<th>${day}</th>`;
             });
             calendarHTML += '</tr><tr>';
-
-            // Calculate offset for Monday start
             const offset = (firstDay.getDay() + 6) % 7;
-
-            // Add empty cells for days before the first day of the month
             for (let i = 0; i < offset; i++) {
                 calendarHTML += '<td></td>';
             }
-
-            // Add cells for each day of the month
             for (let day = 1; day <= lastDay.getDate(); day++) {
                 const currentDay = new Date(year, month, day);
                 const isWeekend = currentDay.getDay() === 0 || currentDay.getDay() === 6;
                 const isChosenDay = highlightChosenDay && currentDay.toDateString() === date.toDateString();
                 const isSpecialDay = specialDates.some(specialDate => specialDate.toDateString() === currentDay.toDateString());
-                
-                calendarHTML += `<td class="${isWeekend ? 'weekend' : ''} ${isChosenDay ? 'chosen-day' : ''} ${isSpecialDay ? 'special-day' : ''}">${day}</td>`;
-
-                // Start a new row for each week
+                const isNextDate7 = highlightDate7 && currentDay.toDateString() === highlightDate7.toDateString();
+                const isNextDate10 = highlightDate10 && currentDay.toDateString() === highlightDate10.toDateString();
+                const isNextDate15 = highlightDate15 && currentDay.toDateString() === highlightDate15.toDateString();
+                calendarHTML += `<td class="${isWeekend ? 'weekend' : ''} ${isChosenDay ? 'chosen-day' : ''} ${isSpecialDay ? 'special-day' : ''}">`;
+                calendarHTML += `${day}`;
+                if (isNextDate7 || isNextDate10 || isNextDate15) {
+                    calendarHTML += `<div class="circle">${day}</div>`;
+                }
+                calendarHTML += `</td>`;
                 if ((offset + day) % 7 === 0 && day !== lastDay.getDate()) {
                     calendarHTML += '</tr><tr>';
                 }
             }
-
-            // Add empty cells for days after the last day of the month
             const remainingDays = 7 - ((offset + lastDay.getDate()) % 7);
             for (let i = 0; i < remainingDays && remainingDays < 7; i++) {
                 calendarHTML += '<td></td>';
             }
-
             calendarHTML += '</tr></table>';
             calendarDiv.innerHTML = calendarHTML;
+        }
+
+        function saveBothCalendarsAsPNG() {
+            const combinedCalendarDiv = document.getElementById('combinedCalendar');
+            html2canvas(combinedCalendarDiv).then(canvas => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png'); 
+                link.download = 'calendar.png'; 
+                link.click(); 
+            });
         }
     </script>
 </body>
