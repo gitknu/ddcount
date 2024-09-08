@@ -23,7 +23,7 @@
             font-style: normal;
         }
         p, span, a, li, button, input {
-            font-weight: 400; /* Regular weight */
+            font-weight: 450; 
             font-style: normal;
         }
         .container {
@@ -34,7 +34,7 @@
             padding: 10px;
             font-size: 16px;
             margin: 5px;
-            font-family: "Montserrat", sans-serif; /* Ensure buttons and inputs use Montserrat */
+            font-family: "Montserrat", sans-serif; 
         }
         .result {
             margin-top: 20px;
@@ -118,7 +118,7 @@
 <body>
     <div class="container">
         <h1>Калькулятор закупівель</h1>
-        <p>Виберіть дату першого дня:</p>
+        <p><b>Виберіть дату для першого дня:</b><br>(<i>понеділок, вівторок або п'ятниця</i>)</p>
         <input type="date" id="dateInput">
         <button onclick="calculateDates()">Вирахувати</button>
         <button id="saveButton" class="hidden" onclick="saveBothCalendarsAsPNG()">Зберегти</button>
@@ -168,7 +168,7 @@
             const nextDate25 = calculateDate(25);
             let message = `<b>7 днів</b> - ${formatDate(nextDate7)}`;
             if (nextDate10.getDay() === 0 || nextDate10.getDay() === 6) {
-                alert('Один із обраних днів (а саме - 10-й) припадає на вихідний. Календар не може бути згенеровано');
+                alert('10-й день припадає на вихідний. Календар не може бути згенеровано');
                 resultDiv.innerText = '';
                 calendarDiv.innerHTML = '';
                 nextMonthCalendarDiv.innerHTML = '';
